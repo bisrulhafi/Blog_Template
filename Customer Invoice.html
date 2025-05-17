@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Excellence Graphics - Accounts</title>
+  <!-- jsPDF Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- jsPDF-AutoTable plugin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <!-- SheetJS (xlsx) Library for Excel parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f4f7f9;
+    }
+    .site-main-header {
+        background-color: #ffffff;
+        padding: 20px 15px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .site-main-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 2.5em;
+        color: #005a99;
+        font-weight: 600;
+    }
+    .site-main-header .site-contact-info {
+        margin: 0;
+        font-size: 1em;
+        color: #555;
+        line-height: 1.6;
+    }
+    .site-main-header .site-contact-info strong {
+        color: #333;
+    }
+    .site-main-header .contact-divider {
+        margin: 0 10px;
+        color: #ccc;
+    }
+
+    header { /* Blue bar for "Accounts Dashboard" */
+      background: #007acc;
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+    .container {
+      padding: 2rem;
+    }
+    .top-actions button { /* Group top action buttons */
+        margin-bottom: 10px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background: #007acc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px; /* Maintained for top-actions, overridden for customer-actions by gap */
+      margin-top: 5px;
+      transition: background-color 0.2s ease;
+    }
+    button:hover { background: #005b99; }
+    button.secondary-action {
+        background-color: #5cb85c;
+    }
+    button.secondary-action:hover {
+        background-color: #4cae4c;
+    }
+    button.tertiary-action { /* For Bulk Upload */
+        background-color: #f0ad4e;
+    }
+    button.tertiary-action:hover {
+        background-color: #ec971f;
+    }
+    button.pdf-btn {
+        background-color: #6c757d;
+        color: white;
+    }
+    button.pdf-btn:hover {
+        background-color: #5a6268;
+    }
+
+    .search-container {
+        margin-bottom: 1.5rem;
+        margin-top: 1rem;
+        display: flex;
+        justify-content: center;
+    }
+    #searchInput {
+        width: 60%;
+        max-width: 500px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 25px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        outline: none;
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    #searchInput:focus {
+        border-color: #007acc;
+        box-shadow: 0 0 8px rgba(0, 122, 204, 0.3);
+    }
+    .overall-totals-banner {
+        background-color: #e9f5ff; border: 1px solid #b3d7ff; border-radius: 8px;
+        padding: 1.5rem 2rem; margin-bottom: 2rem; text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 122, 204, 0.15);
+    }
+    .overall-totals-banner h2 { margin-top: 0; margin-bottom: 1rem; color: #005a99; font-size: 1.8em; }
+    .totals-grid { display: flex; justify-content: space-around; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .totals-grid > div { background-color: #fff; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 180px; margin-bottom: 0.5rem; }
+    .totals-grid p { margin: 0 0 0.5rem 0; font-size: 1em; color: #555; }
+    .totals-grid span { font-size: 1.75em; font-weight: bold; color: #007acc; }
+    .totals-grid span.due-amount { color: #d9534f; }
+    .totals-grid span.settled-amount { color: #5cb85c; }
+
+    .dashboard-container { }
+
+    .customer-profile-group {
+        background-color: #ffffff; padding: 1.5rem; margin-bottom: 1.5rem;
+        border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    .customer-header { /* Uses flex-between from .flex-between class */
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 1rem;
+        align-items: center; /* Ensure vertical alignment */
+    }
+    .customer-header h3 {
+        margin: 0; color: #005a99; font-size: 1.3em; cursor: pointer;
+        display: flex; align-items: center;
+        flex-shrink: 0; /* Prevent name from shrinking too much */
+    }
+    .toggler-icon { margin-right: 10px; font-size: 0.8em; color: #007acc; transition: transform 0.2s ease-in-out; }
+    .customer-collapsible-content { padding-top: 1rem; display: none; /* Default to collapsed */ }
+
+    .customer-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* Spacing between action items */
+        margin-left: auto; /* Push actions to the right if h3 is not taking full width */
+    }
+    .customer-actions button {
+        /* margin-left: 0.5rem; /* Removed in favor of gap */
+        padding: 0.6rem 1rem;
+        margin-right: 0; /* Reset general button margin */
+    }
+    .customer-actions .close-btn { background-color: #d9534f; }
+    .customer-actions .close-btn:hover { background-color: #c9302c; }
+
+    .customer-grand-total-due {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #d9534f; /* Default Red for due amount */
+        white-space: nowrap; /* Prevent wrapping of "Total Due: Rs XXX" */
+    }
+    .customer-grand-total-due.settled {
+        color: #5cb85c; /* Green if settled */
+    }
+
+    .customer-group-details { font-size: 0.95em; color: #555; margin-bottom: 1.2rem; line-height: 1.5; }
+    .customer-group-details strong { color: #333; }
+
+    .invoices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+    .invoice-card {
+        background: #fdfdfd; border: 1px solid #e8e8e8; padding: 1rem;
+        border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        transition: opacity 0.3s ease, background-color 0.3s ease;
+    }
+     .invoice-card.closed-invoice {
+        background-color: #f0f0f0; opacity: 0.65; border-left: 5px solid #9e9e9e;
+    }
+    .invoice-card.closed-invoice .actions button:not(.reopen-btn):not(.delete-invoice-btn):not(.pdf-btn) {
+        pointer-events: none; opacity: 0.4; cursor: not-allowed;
+    }
+     .invoice-card.closed-invoice .actions button.pdf-btn,
+     .invoice-card.closed-invoice .actions button.reopen-btn,
+     .invoice-card.closed-invoice .actions button.delete-invoice-btn {
+        pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important;
+    }
+    .invoice-card .status-closed {
+        font-weight: bold; color: #757575; text-align: right;
+        font-size: 0.9em; margin-top: 0.5rem; display: block;
+        padding: 0.2em 0.5em; background-color: #e0e0e0; border-radius: 3px;
+    }
+    button.reopen-btn {
+        background-color: #ffc107 !important; color: #212529 !important;
+    }
+    button.reopen-btn:hover { background-color: #ffca2c !important; }
+    button.pay-this-invoice-btn {
+        background-color: #28a745 !important;
+    }
+    button.pay-this-invoice-btn:hover {
+        background-color: #218838 !important;
+    }
+
+
+    .invoice-card h4, .invoice-card .invoice-id-display  { margin-top: 0; margin-bottom: 0.2rem; }
+    .invoice-card .invoice-id-display { font-size:0.9em; color:#555; margin-bottom: 0.5rem; }
+    .invoice-card p { margin: 0.3rem 0; font-size: 0.9rem; }
+    .invoice-card .actions { margin-top: 0.5rem; text-align: right;}
+    .invoice-card .actions button { padding: 0.3rem 0.6rem; font-size: 0.8rem; margin-left: 4px; margin-bottom: 4px;}
+    .invoice-card .actions button[title*="Close This Invoice"] { background-color: #757575; }
+    .invoice-card .actions button[title*="Close This Invoice"]:hover { background-color: #616161; }
+    .invoice-card .actions button[title*="Delete This Invoice"],
+    .invoice-card .actions button[title*="Permanently Delete This Invoice"],
+    .invoice-card .actions button.delete-invoice-btn { background-color: #e74c3c; }
+    .invoice-card .actions button[title*="Delete This Invoice"]:hover,
+    .invoice-card .actions button[title*="Permanently Delete This Invoice"]:hover,
+    .invoice-card .actions button.delete-invoice-btn:hover { background-color: #c0392b; }
+
+
+    .popup, .edit-popup, .payment-popup, .new-invoice-for-existing-customer-popup {
+      position: fixed; top: 5%; left: 50%; transform: translate(-50%, 0);
+      background: white; border: 1px solid #ccc; border-radius: 8px;
+      padding: 1.5rem; box-shadow: 0 0 15px rgba(0,0,0,0.25);
+      width: 90%; max-width: 750px; display: none; z-index: 999;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .popup label {
+        display: block; margin-bottom: 0.25rem; font-weight: 500;
+        font-size: 0.9em; color: #333;
+    }
+    .popup input, .popup textarea, .edit-popup input, .edit-popup textarea,
+    .payment-popup input, .new-invoice-for-existing-customer-popup input,
+    .new-invoice-for-existing-customer-popup textarea {
+      width: 100%; box-sizing: border-box; margin-bottom: 0.75rem;
+      padding: 0.6rem; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .readonly-field, input[readonly].readonly-field {
+        background-color: #f0f0f0; cursor: not-allowed; padding: 0.6rem;
+        border: 1px solid #ddd; border-radius: 4px; margin-bottom: 0.75rem;
+        display: block; white-space: pre-wrap;
+    }
+    .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .invoice-table th, .invoice-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
+    .invoice-table td input { width: calc(100% - 10px); box-sizing: border-box; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .popup .close-btn, .edit-popup .close-btn, .payment-popup .close-btn,
+    .new-invoice-for-existing-customer-popup .close-btn { background: #e74c3c; color: white; }
+    .popup .close-btn:hover, .edit-popup .close-btn:hover, .payment-popup .close-btn:hover,
+    .new-invoice-for-existing-customer-popup .close-btn:hover { background: #c0392b; }
+    .popup-header { display: flex; justify-content: space-between; align-items: center;
+                    margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    .popup-header h3 { margin: 0; }
+    .popup-close-icon { font-size: 1.5rem; color: #888; cursor: pointer; }
+    .popup-close-icon:hover { color: #333; }
+    .action-buttons { margin-top: 1.5rem; text-align: right; }
+    .action-buttons button { margin-left: 0.5rem; }
+    .payment-info p { margin: 0.5rem 0; font-size: 1rem; }
+    .section-title { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #007acc; }
+  </style>
+</head>
+<body>
+  <div class="site-main-header">
+    <h1>Excellence Graphics</h1>
+    <p class="site-contact-info">
+      <strong>Address:</strong> Hijragama, Hemmathagama
+      <span class="contact-divider">|</span>
+      <strong>Contact:</strong> 0779998608 / 0711848267
+    </p>
+  </div>
+
+  <header>Accounts Dashboard</header>
+  <div class="container">
+    <div class="top-actions">
+        <button onclick="openAddCustomerInvoicePopup()">➕ Add New Customer & First Invoice</button>
+        <button onclick="openAddCustomerProfilePopup()" class="secondary-action">👤 Add Customer Profile</button>
+        <button onclick="openFileUpload()" class="tertiary-action">📤 Bulk Upload Customers</button>
+        <input type="file" id="excelFileUpload" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="search-container">
+      <input type="text" id="searchInput" oninput="filterCustomers()" placeholder="🔍 Search by Name or Contact...">
+    </div>
+
+    <div class="overall-totals-banner">
+      <h2>Overall Account Summary</h2>
+      <div class="totals-grid">
+        <div><p>Total Billed:</p><span id="overallBilled">Rs 0.00</span></div>
+        <div><p>Total Paid:</p><span id="overallPaid">Rs 0.00</span></div>
+        <div><p>Total Due (Active Invoices):</p><span id="overallDue" class="due-amount">Rs 0.00</span></div>
+      </div>
+    </div>
+    <div class="dashboard-container" id="dashboard"></div>
+  </div>
+
+  <!-- Add Customer & Initial Invoice Popup -->
+  <div class="popup" id="addCustomerInvoicePopup">
+    <div class="popup-header"><h3>Add New Customer & First Invoice</h3><span class="popup-close-icon" onclick="closeAddCustomerInvoicePopup()">✖</span></div>
+    <div class="section-title">Customer Details</div>
+    <label for="custName_aci">Customer Name (Unique & Required):</label>
+    <input type="text" id="custName_aci" placeholder="Full Name" required>
+    <label for="custAddress_aci">Customer Address (Optional):</label>
+    <textarea id="custAddress_aci" placeholder="Full Address" rows="3"></textarea>
+    <label for="custContact_aci">Contact (Optional):</label>
+    <input type="text" id="custContact_aci" placeholder="Phone Number">
+
+    <div class="section-title">Invoice Details</div>
+    <div class="flex-between" style="margin-bottom:1rem;"><span>Invoice No: <span id="invoiceNo_aci"></span></span><span>Date: <span id="invoiceDate_aci"></span></span></div>
+    <table class="invoice-table" id="invoiceTable_aci"><thead><tr><th>Description</th><th>Qty</th><th>Rs</th><th>Amount</th><th>❌</th></tr></thead><tbody></tbody></table>
+    <button onclick="addItemRow_aci()">➕ Add Item Row</button><hr>
+    <p style="text-align:right;"><b>Grand Total: Rs <span id="grandTotal_aci">0.00</span></b></p>
+    <div class="action-buttons"><button onclick="closeAddCustomerInvoicePopup()" class="close-btn">Cancel</button><button onclick="saveCustomerAndInvoice()">✅ Save</button></div>
+  </div>
+
+  <!-- Add Customer Profile Only Popup -->
+  <div class="popup" id="addCustomerProfilePopup">
+    <div class="popup-header"><h3>Add New Customer Profile</h3><span class="popup-close-icon" onclick="closeAddCustomerProfilePopup()">✖</span></div>
+    <div class="section-title">Customer Details</div>
+    <label for="newCustName_profile">Customer Name (Unique & Required):</label><input type="text" id="newCustName_profile" placeholder="Full Name" required>
+    <label for="newCustAddress_profile">Customer Address (Optional):</label><textarea id="newCustAddress_profile" placeholder="Full Address" rows="3"></textarea>
+    <label for="newCustContact_profile">Contact (Optional):</label><input type="text" id="newCustContact_profile" placeholder="Phone Number">
+    <div class="action-buttons"><button onclick="closeAddCustomerProfilePopup()" class="close-btn">Cancel</button><button onclick="saveNewCustomerProfile()">💾 Save Customer</button></div>
+  </div>
+
+  <!-- Edit Invoice Popup -->
+  <div class="edit-popup" id="editInvoicePopup"></div>
+
+  <!-- Make Payment Popup (Customer Level / Invoice Level) -->
+  <div class="payment-popup" id="paymentPopup">
+    <div class="popup-header"><h3 id="paymentPopupTitle">Make Payment</h3><span class="popup-close-icon" onclick="closePaymentPopup()">✖</span></div>
+    <div class="payment-info">
+        <p><strong>Customer:</strong> <span id="paymentCustName"></span></p>
+        <p style="font-weight:bold;"><strong id="paymentContextLabel">Total Outstanding (Active Invoices):</strong> Rs <span id="paymentContextValue"></span></p>
+    </div><hr>
+    <label for="paymentAmountInput">Enter Payment Amount:</label><input type="number" id="paymentAmountInput" placeholder="0.00" min="0.01" step="0.01">
+    <div class="action-buttons">
+        <button onclick="closePaymentPopup()" class="close-btn">Cancel</button>
+        <button id="submitPaymentButton">✅ Submit Payment</button>
+    </div>
+  </div>
+
+  <!-- New Invoice for Existing Customer Popup -->
+  <div class="new-invoice-for-existing-customer-popup" id="newInvoiceForExistingCustomerPopup">
+    <div class="popup-header"><h3 id="nifec_popup_title">Create New Invoice For: <span id="nifec_custName_display"></span></h3><span class="popup-close-icon" onclick="closeNewInvoiceForExistingCustomerPopup()">✖</span></div>
+    <div class="section-title">Customer Details (Read-Only)</div>
+    <div class="readonly-field"><strong>Address:</strong> <span id="nifec_custAddress_display"></span></div>
+    <div class="readonly-field"><strong>Contact:</strong> <span id="nifec_custContact_display"></span></div>
+    <div class="section-title">New Invoice Details</div>
+    <div class="flex-between" style="margin-bottom:1rem;"><span>Invoice No: <span id="nifec_invoiceNo"></span></span><span>Date: <span id="nifec_invoiceDate"></span></span></div>
+    <table class="invoice-table" id="nifec_invoiceTable"><thead><tr><th>Description</th><th>Qty</th><th>Rs</th><th>Amount</th><th>❌</th></tr></thead><tbody></tbody></table>
+    <button onclick="addNIFEC_ItemRow()">➕ Add Item Row</button><hr>
+    <p style="text-align:right;"><b>Grand Total: Rs <span id="nifec_grandTotal">0.00</span></b></p>
+    <div class="action-buttons"><button onclick="closeNewInvoiceForExistingCustomerPopup()" class="close-btn">Cancel</button><button onclick="saveNewInvoiceForExistingCustomer()">✅ Save New Invoice</button></div>
+  </div>
+
+  <script>
+    let invoiceCounter = 1000; // Default starting point if nothing in localStorage
+    let customers = [];
+    let currentCustomerForNewInvoice = -1,
+        currentEditingCustomerIndex = -1,
+        currentEditingInvoiceIndex = -1,
+        currentPaymentCustomerIndex = -1,
+        currentPaymentInvoiceIndex = -1;
+
+    const CUSTOMERS_STORAGE_KEY = 'excellenceGraphics_customers';
+    const INVOICE_COUNTER_STORAGE_KEY = 'excellenceGraphics_invoiceCounter';
+
+    function saveDataToLocalStorage() {
+        try {
+            localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(customers));
+            localStorage.setItem(INVOICE_COUNTER_STORAGE_KEY, invoiceCounter.toString());
+        } catch (e) {
+            console.error("Error saving data to localStorage:", e);
+            alert("Could not save data. LocalStorage might be full or disabled.");
+        }
+    }
+
+    function loadDataFromLocalStorage() {
+        try {
+            const storedCustomers = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
+            if (storedCustomers) {
+                customers = JSON.parse(storedCustomers);
+                customers.forEach(customer => {
+                    if (customer.invoices && Array.isArray(customer.invoices)) {
+                        customer.invoices.forEach(invoice => {
+                            if (invoice.dateObj) { // If dateObj is already stored (as string)
+                                invoice.dateObj = new Date(invoice.dateObj);
+                            } else if (invoice.date) { // Fallback for older data: use invoice.date
+                                // Attempt to parse invoice.date (likely in toLocaleDateString() format)
+                                // This might be locale-dependent, safer to store ISO string if possible in future
+                                invoice.dateObj = new Date(invoice.date);
+                            } else { // If no date info, default to now (should ideally not happen)
+                                invoice.dateObj = new Date();
+                            }
+                        });
+                    }
+                });
+            }
+
+            const storedInvoiceCounter = localStorage.getItem(INVOICE_COUNTER_STORAGE_KEY);
+            if (storedInvoiceCounter) {
+                invoiceCounter = parseInt(storedInvoiceCounter, 10);
+                if (isNaN(invoiceCounter)) {
+                    invoiceCounter = 1000;
+                    console.warn("Invoice counter from localStorage was NaN, reset to 1000.");
+                }
+            }
+        } catch (e) {
+            console.error("Error loading data from localStorage:", e);
+            alert("Could not load existing data. Starting fresh. Previous data might be corrupted or localStorage inaccessible.");
+            customers = [];
+            invoiceCounter = 1000;
+        }
+    }
+
+
+    function findCustomerIndexByName(name) { return customers.findIndex(cust => cust.name.toLowerCase() === name.toLowerCase()); }
+
+    function openAddCustomerProfilePopup() {
+        document.getElementById("newCustName_profile").value = "";
+        document.getElementById("newCustAddress_profile").value = "";
+        document.getElementById("newCustContact_profile").value = "";
+        document.getElementById("addCustomerProfilePopup").style.display = "block";
+        document.getElementById("newCustName_profile").focus();
+    }
+    function closeAddCustomerProfilePopup() { document.getElementById("addCustomerProfilePopup").style.display = "none"; }
+    function saveNewCustomerProfile() {
+        const custNameValue = document.getElementById("newCustName_profile").value.trim();
+        const custAddressValue = document.getElementById("newCustAddress_profile").value.trim();
+        const custContactValue = document.getElementById("newCustContact_profile").value.trim();
+        if (!custNameValue) { alert("Customer Name is required."); document.getElementById("newCustName_profile").focus(); return; }
+        if (findCustomerIndexByName(custNameValue) !== -1) {
+            alert(`Customer with name "${custNameValue}" already exists. Please use a unique name.`);
+            document.getElementById("newCustName_profile").focus(); return;
+        }
+        customers.push({ name: custNameValue, address: custAddressValue, contact: custContactValue, invoices: [] });
+        saveDataToLocalStorage();
+        alert(`Customer "${custNameValue}" added successfully.`);
+        closeAddCustomerProfilePopup(); renderDashboard();
+    }
+
+    function openAddCustomerInvoicePopup() {
+      document.getElementById("addCustomerInvoicePopup").style.display = "block";
+      document.getElementById("invoiceNo_aci").innerText = "INV" + invoiceCounter;
+      document.getElementById("invoiceDate_aci").innerText = new Date().toLocaleDateString();
+      resetForm_aci(); addItemRow_aci();
+      document.getElementById("custName_aci").focus();
+    }
+    function closeAddCustomerInvoicePopup() { document.getElementById("addCustomerInvoicePopup").style.display = "none"; }
+    function addItemRow_aci() {
+      const tbody = document.querySelector("#invoiceTable_aci tbody"); const row = tbody.insertRow();
+      row.innerHTML = `<td><input type="text" placeholder="Item Description"></td><td><input type="number" placeholder="1" min="1" value="1" oninput="updateItemAmount_generic(this, updateGrandTotal_aci)"></td><td><input type="number" placeholder="0.00" min="0" step="0.01" value="0" oninput="updateItemAmount_generic(this, updateGrandTotal_aci)"></td><td class="amount">0.00</td><td><button onclick="deleteItemRow_generic(this, updateGrandTotal_aci)" class="close-btn" style="padding:0.2rem 0.5rem;background-color:#e74c3c;">🗑️</button></td>`;
+      updateGrandTotal_aci();
+      row.cells[0].querySelector('input').focus();
+    }
+    function updateGrandTotal_aci() {
+      let total = 0; document.querySelectorAll("#invoiceTable_aci tbody tr").forEach(row => { total += parseFloat(row.cells[3].innerText) || 0; });
+      document.getElementById("grandTotal_aci").innerText = total.toFixed(2);
+    }
+    function resetForm_aci() {
+      document.getElementById("custName_aci").value = ""; document.getElementById("custAddress_aci").value = "";
+      document.getElementById("custContact_aci").value = ""; document.querySelector("#invoiceTable_aci tbody").innerHTML = "";
+      updateGrandTotal_aci();
+    }
+    function saveCustomerAndInvoice() {
+      const custNameValue = document.getElementById("custName_aci").value.trim();
+      const custAddressValue = document.getElementById("custAddress_aci").value.trim();
+      const custContactValue = document.getElementById("custContact_aci").value.trim();
+      if (!custNameValue) { alert("Customer Name is required."); document.getElementById("custName_aci").focus(); return; }
+
+      const items = Array.from(document.querySelectorAll("#invoiceTable_aci tbody tr")).map(row => ({
+        desc: row.cells[0].querySelector("input").value.trim(), qty: row.cells[1].querySelector("input").value,
+        rs: row.cells[2].querySelector("input").value, amt: row.cells[3].innerText
+      })).filter(item => item.desc !== "");
+      if (items.length === 0) { alert("Please add at least one item to the invoice."); return; }
+      const currentDate = new Date();
+      const newInvoiceObject = {
+        invoiceId: "INV" + invoiceCounter, date: currentDate.toLocaleDateString(),
+        dateObj: currentDate, items: items, total: document.getElementById("grandTotal_aci").innerText, paidAmount: 0,
+        isClosed: false
+      };
+      let customerIndex = findCustomerIndexByName(custNameValue);
+      if (customerIndex !== -1) {
+        if (!confirm(`Customer "${custNameValue}" already exists. Their address (if provided) and contact details will be updated, and this new invoice will be added. Continue?`)) return;
+        customers[customerIndex].address = custAddressValue || customers[customerIndex].address;
+        customers[customerIndex].contact = custContactValue || customers[customerIndex].contact;
+        customers[customerIndex].invoices.push(newInvoiceObject);
+      } else {
+        customers.push({ name: custNameValue, address: custAddressValue, contact: custContactValue, invoices: [newInvoiceObject] });
+      }
+      invoiceCounter++;
+      saveDataToLocalStorage();
+      closeAddCustomerInvoicePopup(); renderDashboard();
+    }
+    function deleteItemRow_generic(btn, totalUpdateFn) {
+      const row = btn.closest("tr"); const tbody = row.parentElement;
+      if (tbody.rows.length > 1) { row.remove(); }
+      else {
+        row.querySelector('input[type="text"]').value = ""; row.querySelectorAll('input[type="number"]')[0].value = "1";
+        row.querySelectorAll('input[type="number"]')[1].value = "0"; row.querySelector('.amount').innerText = "0.00";
+      }
+      totalUpdateFn();
+    }
+    function updateItemAmount_generic(inputElement, totalUpdateFn) {
+      const row = inputElement.closest("tr");
+      const qty = parseFloat(row.cells[1].querySelector("input").value) || 0;
+      const rs = parseFloat(row.cells[2].querySelector("input").value) || 0;
+      row.cells[3].innerText = (qty * rs).toFixed(2);
+      totalUpdateFn();
+    }
+
+    function filterCustomers() {
+        const searchTerm = document.getElementById('searchInput').value;
+        renderDashboard(searchTerm);
+    }
+
+    function renderDashboard(searchTerm = "") {
+        let overallBilledTotal = 0, overallPaidTotal = 0, overallCurrentlyDue = 0;
+        customers.forEach(customer => {
+            customer.invoices.forEach(invoice => {
+                overallBilledTotal += parseFloat(invoice.total) || 0;
+                overallPaidTotal += parseFloat(invoice.paidAmount) || 0;
+                if (!invoice.isClosed) {
+                    overallCurrentlyDue += (parseFloat(invoice.total) || 0) - (parseFloat(invoice.paidAmount) || 0);
+                }
+            });
+        });
+        document.getElementById("overallBilled").textContent = `Rs ${overallBilledTotal.toFixed(2)}`;
+        document.getElementById("overallPaid").textContent = `Rs ${overallPaidTotal.toFixed(2)}`;
+        const overallDueEl = document.getElementById("overallDue");
+        overallDueEl.textContent = `Rs ${overallCurrentlyDue.toFixed(2)}`;
+        overallDueEl.className = overallCurrentlyDue > 0.005 ? 'due-amount' : 'settled-amount';
+
+        const dash = document.getElementById("dashboard");
+        dash.innerHTML = "";
+
+        const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+        let displayedCustomersCount = 0;
+
+        const sortedCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedCustomers.forEach((customer) => {
+            const customerIdx = customers.findIndex(c => c.name === customer.name); // Find original index
+
+            if (normalizedSearchTerm !== "") {
+                const nameMatch = customer.name.toLowerCase().includes(normalizedSearchTerm);
+                const contactMatch = customer.contact && customer.contact.toLowerCase().includes(normalizedSearchTerm);
+                if (!nameMatch && !contactMatch) {
+                    return;
+                }
+            }
+            displayedCustomersCount++;
+
+            const customerContainer = document.createElement('div'); customerContainer.className = 'customer-profile-group';
+
+            // Calculate customer's total due for active invoices
+            let customerTotalCurrentlyDue = 0;
+            customer.invoices.forEach(inv => { if (!inv.isClosed) { customerTotalCurrentlyDue += (parseFloat(inv.total) - (parseFloat(inv.paidAmount) || 0)); }});
+            customerTotalCurrentlyDue = parseFloat(customerTotalCurrentlyDue.toFixed(2));
+
+            // Customer Grand Total Display
+            const customerGrandTotalDisplay = `<span class="customer-grand-total-due ${customerTotalCurrentlyDue <= 0.005 ? 'settled' : ''}">Total Due: Rs ${customerTotalCurrentlyDue.toFixed(2)}</span>`;
+
+            // Payment button or settled status text
+            const paymentStatusHtml = customerTotalCurrentlyDue > 0.005 ?
+                `<button onclick="openCustomerPaymentPopup(${customerIdx})">💰 Make Payment (All)</button>` :
+                '<span style="color:green;font-weight:bold; font-size:0.9em;">✅ Settled</span>';
+
+            const newInvoiceButton = `<button onclick="openNewInvoiceForExistingCustomerPopup(${customerIdx})" class="secondary-action">➕ New Invoice</button>`;
+            const deleteCustomerButton = `<button onclick="deleteCustomerProfile(${customerIdx})" class="close-btn" title="Delete Customer & ALL their Invoices">🗑️ Delete Customer</button>`;
+
+
+            const customerHeaderDiv = document.createElement('div');
+            customerHeaderDiv.className = 'customer-header flex-between'; // flex-between for name and actions block
+            customerHeaderDiv.innerHTML = `
+                <h3 onclick="toggleCustomerDetails(${customerIdx})" title="Click to expand/collapse details">
+                    <span id="toggler-icon-${customerIdx}" class="toggler-icon">▶</span> ${customer.name}
+                </h3>
+                <div class="customer-actions">
+                    ${customerGrandTotalDisplay}
+                    ${paymentStatusHtml}
+                    ${newInvoiceButton}
+                    ${deleteCustomerButton}
+                </div>`;
+            customerContainer.appendChild(customerHeaderDiv);
+
+            const collapsibleContentDiv = document.createElement('div');
+            collapsibleContentDiv.className = 'customer-collapsible-content';
+            collapsibleContentDiv.id = `collapsible-content-${customerIdx}`;
+
+            const previouslyOpenState = localStorage.getItem(`customer_expanded_${customer.name}`);
+            if (previouslyOpenState === 'true') {
+                 collapsibleContentDiv.style.display = 'block';
+                 const newH3Icon = customerHeaderDiv.querySelector(`#toggler-icon-${customerIdx}`);
+                 if (newH3Icon) newH3Icon.textContent = '▼';
+            } else {
+                collapsibleContentDiv.style.display = 'none';
+            }
+
+            const customerDetailsP = document.createElement('p'); customerDetailsP.className = 'customer-group-details';
+            customerDetailsP.innerHTML = `<strong>Address:</strong> ${customer.address || 'N/A'}<br><strong>Contact:</strong> ${customer.contact || 'N/A'}`;
+            collapsibleContentDiv.appendChild(customerDetailsP);
+            const invoicesContainer = document.createElement('div'); invoicesContainer.className = 'invoices-grid';
+            if (customer.invoices.length === 0) {
+                invoicesContainer.innerHTML = '<p style="text-align:center;color:#777;margin-top:1rem;"><em>No invoices for this customer yet.</em></p>';
+            } else {
+                const sortedInvoices = [...customer.invoices].sort((a, b) => {
+                    // Ensure dateObj are Date instances for comparison
+                    const dateA = a.dateObj instanceof Date ? a.dateObj : new Date(a.dateObj || a.date);
+                    const dateB = b.dateObj instanceof Date ? b.dateObj : new Date(b.dateObj || b.date);
+                    return dateB - dateA; // Sort by date descending (newest first)
+                });
+                sortedInvoices.forEach((invoice) => {
+                    // Find the original index of this invoice within the customer.invoices array
+                    const originalInvoiceIndex = customer.invoices.findIndex(inv => inv.invoiceId === invoice.invoiceId);
+
+                    const div = document.createElement("div");
+                    div.className = `invoice-card ${invoice.isClosed ? 'closed-invoice' : ''}`;
+                    const totalBilled = parseFloat(invoice.total); const amountPaid = parseFloat(invoice.paidAmount) || 0;
+                    let amountDueThisInvoice = parseFloat((totalBilled - amountPaid).toFixed(2));
+                    if (invoice.isClosed) { amountDueThisInvoice = 0; } // If closed, due is 0 regardless
+
+                    let actionButtonsHTML = '';
+                    if (invoice.isClosed) {
+                        actionButtonsHTML = `
+                            <button onclick="generateInvoicePDF(${customerIdx},${originalInvoiceIndex})" class="pdf-btn" title="Create PDF">📄 PDF</button>
+                            <button onclick="reopenInvoice(${customerIdx},${originalInvoiceIndex})" class="reopen-btn" title="Re-open this Invoice">🔓 Re-open</button>
+                            <button onclick="permanentlyDeleteInvoice(${customerIdx},${originalInvoiceIndex})" class="close-btn delete-invoice-btn" title="Permanently Delete This Invoice">🗑️ Delete</button>
+                        `;
+                    } else {
+                        let payThisButton = '';
+                        if (amountDueThisInvoice > 0.005) { // Only show pay if there's an amount due
+                            payThisButton = `<button onclick="openInvoicePaymentPopup(${customerIdx},${originalInvoiceIndex})" title="Make payment for this invoice" class="pay-this-invoice-btn">💰 Pay This</button>`;
+                        }
+                        actionButtonsHTML = `
+                            <button onclick="openEditInvoicePopup(${customerIdx},${originalInvoiceIndex})" title="View/Edit Invoice">✏️ Edit</button>
+                            <button onclick="generateInvoicePDF(${customerIdx},${originalInvoiceIndex})" class="pdf-btn" title="Create PDF">📄 PDF</button>
+                            ${payThisButton}
+                            <button onclick="closeInvoice(${customerIdx},${originalInvoiceIndex})" class="close-btn" title="Close This Invoice">🔒 Close</button>
+                            <button onclick="permanentlyDeleteInvoice(${customerIdx},${originalInvoiceIndex})" class="close-btn delete-invoice-btn" title="Permanently Delete This Invoice">🗑️ Delete</button>
+                        `;
+                    }
+                    div.innerHTML = `<div class="flex-between"><div><h4 class="invoice-id-display">Invoice ID: ${invoice.invoiceId}</h4><p style="font-size:0.8em;color:#777;">Date: ${invoice.date}</p></div><div></div></div><hr style="margin:0.5rem 0;"><p><strong>Total Billed:</strong> Rs ${totalBilled.toFixed(2)}</p><p><strong>Amount Paid:</strong> Rs ${amountPaid.toFixed(2)}</p><p style="font-weight:bold;color:${amountDueThisInvoice > 0.005 && !invoice.isClosed ? '#c0392b':'green'};"><strong>Amount Due:</strong> Rs ${amountDueThisInvoice.toFixed(2)}</p><div class="actions">${actionButtonsHTML}</div>${invoice.isClosed ? '<span class="status-closed">STATUS: CLOSED</span>' : (amountDueThisInvoice <= 0.005 ? '<p style="color:green;font-weight:bold;text-align:right;font-size:0.85em;">✔ Settled</p>':'')}`;
+                    invoicesContainer.appendChild(div);
+                });
+            }
+            collapsibleContentDiv.appendChild(invoicesContainer); customerContainer.appendChild(collapsibleContentDiv); dash.appendChild(customerContainer);
+        });
+
+        if (displayedCustomersCount === 0) {
+            if (searchTerm) { dash.innerHTML = `<p style="text-align:center; margin-top: 2rem; font-size: 1.1em;">No customers found matching "${searchTerm}".</p>`; }
+            else if (customers.length === 0 && overallBilledTotal === 0) { dash.innerHTML = "<p style='text-align:center; margin-top: 2rem; font-size: 1.1em;'>No customers found. Click '➕ Add New Customer & First Invoice' or '📤 Bulk Upload Customers' to begin.</p>";}
+            else if (customers.length === 0) { dash.innerHTML = "<p style='text-align:center; margin-top: 2rem; font-size: 1.1em;'>No active customers.</p>";}
+        }
+    }
+    function toggleCustomerDetails(customerIdx) {
+        const contentDiv = document.getElementById(`collapsible-content-${customerIdx}`);
+        const icon = document.getElementById(`toggler-icon-${customerIdx}`);
+        const customerName = customers[customerIdx].name;
+        if (!contentDiv || !icon) return;
+        if (contentDiv.style.display === 'none' || contentDiv.style.display === '') {
+            contentDiv.style.display = 'block'; icon.textContent = '▼';
+            localStorage.setItem(`customer_expanded_${customerName}`, 'true');
+        }
+        else {
+            contentDiv.style.display = 'none'; icon.textContent = '▶';
+            localStorage.setItem(`customer_expanded_${customerName}`, 'false');
+        }
+    }
+    function openEditInvoicePopup(customerIdx, invoiceIdx) {
+      currentEditingCustomerIndex = customerIdx; currentEditingInvoiceIndex = invoiceIdx;
+      const customer = customers[customerIdx]; const invoice = customer.invoices[invoiceIdx];
+      if (invoice.isClosed) { alert(`Invoice ${invoice.invoiceId} is closed and cannot be edited. Please re-open it first.`); return; }
+      const editBox = document.getElementById("editInvoicePopup");
+      editBox.innerHTML = `<div class="popup-header"><h3>Edit Invoice: ${invoice.invoiceId}</h3><span class="popup-close-icon" onclick="closeEditInvoicePopup()">✖</span></div><div class="section-title">Customer Details</div><label>Customer Name (Read-only):</label><div class="readonly-field">${customer.name}</div><label for="editCustAddress_edit">Customer Address (Optional):</label><textarea id="editCustAddress_edit" rows="3">${customer.address || ''}</textarea><label for="editCustContact_edit">Contact (Optional):</label><input type="text" id="editCustContact_edit" value="${customer.contact||''}"><div class="section-title">Invoice Details (Date: ${invoice.date})</div><table class="invoice-table" id="invoiceTable_edit"><thead><tr><th>Description</th><th>Qty</th><th>Rs</th><th>Amount</th><th>❌</th></tr></thead><tbody>${invoice.items.map(item => `<tr><td><input type="text" value="${item.desc}"></td><td><input type="number" value="${item.qty}" min="1" oninput="updateItemAmount_generic(this,updateGrandTotal_edit)"></td><td><input type="number" value="${item.rs}" min="0" step="0.01" oninput="updateItemAmount_generic(this,updateGrandTotal_edit)"></td><td class="amount">${parseFloat(item.amt).toFixed(2)}</td><td><button onclick="deleteItemRow_generic(this,updateGrandTotal_edit)" class="close-btn" style="padding:0.2rem 0.5rem;background-color:#e74c3c;">🗑️</button></td></tr>`).join("")}</tbody></table><button onclick="addItemRow_edit()">➕ Add Item Row</button><hr><p style="text-align:right;"><b>Invoice Total: Rs <span id="grandTotal_edit">${parseFloat(invoice.total).toFixed(2)}</span></b></p><p style="text-align:right;font-size:0.9em;">Paid Amount: Rs ${parseFloat(invoice.paidAmount || 0).toFixed(2)}</p><div class="action-buttons"><button onclick="closeEditInvoicePopup()" class="close-btn">Cancel</button><button onclick="saveEditedInvoice()">💾 Save Changes</button></div>`;
+      editBox.style.display = "block"; if (invoice.items.length === 0) addItemRow_edit(); updateGrandTotal_edit();
+      document.getElementById("editCustAddress_edit").focus();
+    }
+    function closeEditInvoicePopup() { document.getElementById("editInvoicePopup").style.display = "none"; currentEditingCustomerIndex = -1; currentEditingInvoiceIndex = -1; }
+    function addItemRow_edit() {
+      const tbody = document.querySelector("#invoiceTable_edit tbody"); const row = tbody.insertRow();
+      row.innerHTML = `<td><input type="text" placeholder="Item Description"></td><td><input type="number" placeholder="1" min="1" value="1" oninput="updateItemAmount_generic(this,updateGrandTotal_edit)"></td><td><input type="number" placeholder="0.00" min="0" step="0.01" value="0" oninput="updateItemAmount_generic(this,updateGrandTotal_edit)"></td><td class="amount">0.00</td><td><button onclick="deleteItemRow_generic(this,updateGrandTotal_edit)" class="close-btn" style="padding:0.2rem 0.5rem;background-color:#e74c3c;">🗑️</button></td>`;
+      updateGrandTotal_edit();
+      row.cells[0].querySelector('input').focus();
+    }
+    function updateGrandTotal_edit() {
+      let total = 0; document.querySelectorAll("#invoiceTable_edit tbody tr").forEach(r => { total += parseFloat(r.cells[3].innerText) || 0; });
+      document.getElementById("grandTotal_edit").innerText = total.toFixed(2);
+    }
+    function saveEditedInvoice() {
+      if (currentEditingCustomerIndex === -1 || currentEditingInvoiceIndex === -1) return;
+      const customer = customers[currentEditingCustomerIndex]; const invoice = customer.invoices[currentEditingInvoiceIndex];
+      if (invoice.isClosed) { alert("Cannot save changes to a closed invoice."); return; }
+      let currentPaidAmount = parseFloat(invoice.paidAmount) || 0;
+      const editedCustAddress = document.getElementById("editCustAddress_edit").value.trim();
+      const editedCustContact = document.getElementById("editCustContact_edit").value.trim();
+
+      const editedItems = Array.from(document.querySelectorAll("#invoiceTable_edit tbody tr")).map(r => ({
+        desc: r.cells[0].querySelector("input").value.trim(), qty: r.cells[1].querySelector("input").value,
+        rs: r.cells[2].querySelector("input").value, amt: r.cells[3].innerText
+      })).filter(item => item.desc !== "");
+      if (editedItems.length === 0) { alert("Please add at least one item."); return; }
+      const newTotalStr = document.getElementById("grandTotal_edit").innerText; const newTotal = parseFloat(newTotalStr);
+      customer.address = editedCustAddress;
+      customer.contact = editedCustContact;
+      invoice.items = editedItems; invoice.total = newTotalStr;
+      if (newTotal < currentPaidAmount) {
+        alert(`Invoice total (Rs ${newTotal.toFixed(2)}) is now less than the amount already paid (Rs ${currentPaidAmount.toFixed(2)}). The paid amount for THIS INVOICE will be adjusted to match the new total (Rs ${newTotal.toFixed(2)}). Please ensure this is correct and manage any overall customer balance adjustments if necessary.`);
+        invoice.paidAmount = newTotal.toFixed(2);
+      }
+      saveDataToLocalStorage();
+      closeEditInvoicePopup(); renderDashboard(document.getElementById('searchInput').value);
+    }
+    function closeInvoice(customerIdx, invoiceIdx) {
+      const customer = customers[customerIdx]; const invoice = customer.invoices[invoiceIdx];
+      if (confirm(`Are you sure you want to CLOSE Invoice ID: ${invoice.invoiceId} for ${customer.name}? This invoice will no longer be considered for active dues or payments, but its financial data (billed/paid) remains for records.`)) {
+        invoice.isClosed = true;
+        saveDataToLocalStorage();
+        renderDashboard(document.getElementById('searchInput').value); alert(`Invoice ${invoice.invoiceId} has been closed.`);
+      }
+    }
+    function reopenInvoice(customerIdx, invoiceIdx) {
+      const customer = customers[customerIdx]; const invoice = customer.invoices[invoiceIdx];
+      if (confirm(`Are you sure you want to RE-OPEN Invoice ID: ${invoice.invoiceId} for ${customer.name}? This will make the invoice active again.`)) {
+        invoice.isClosed = false;
+        saveDataToLocalStorage();
+        renderDashboard(document.getElementById('searchInput').value); alert(`Invoice ${invoice.invoiceId} has been re-opened.`);
+      }
+    }
+    function permanentlyDeleteInvoice(customerIdx, invoiceIdx) {
+      const customer = customers[customerIdx]; const invoice = customer.invoices[invoiceIdx];
+      if (confirm(`Are you sure you want to PERMANENTLY DELETE Invoice ID: ${invoice.invoiceId} for ${customer.name}? This action cannot be undone and will remove all financial records for this specific invoice.`)) {
+        customer.invoices.splice(invoiceIdx, 1);
+        saveDataToLocalStorage();
+        renderDashboard(document.getElementById('searchInput').value);
+        alert(`Invoice ${invoice.invoiceId} has been permanently deleted.`);
+      }
+    }
+    function deleteCustomerProfile(customerIdx) {
+        const customer = customers[customerIdx];
+        if (confirm(`Delete entire profile for "${customer.name}"? This deletes ALL associated invoices (active or closed) and all financial records for this customer. This action cannot be undone.`)) {
+            customers.splice(customerIdx, 1);
+            localStorage.removeItem(`customer_expanded_${customer.name}`); // Remove expansion state
+            saveDataToLocalStorage();
+            renderDashboard(document.getElementById('searchInput').value);
+            alert(`Customer profile for "${customer.name}" and all their invoices deleted.`);
+        }
+    }
+
+    function openInvoicePaymentPopup(customerIdx, invoiceIdx) {
+        currentPaymentCustomerIndex = customerIdx;
+        currentPaymentInvoiceIndex = invoiceIdx;
+        const customer = customers[customerIdx];
+        const invoice = customer.invoices[invoiceIdx];
+
+        const dueOnThisInvoice = (parseFloat(invoice.total) - (parseFloat(invoice.paidAmount) || 0)).toFixed(2);
+
+        document.getElementById("paymentPopupTitle").innerText = `Make Payment for Invoice: ${invoice.invoiceId}`;
+        document.getElementById("paymentCustName").innerText = customer.name;
+        document.getElementById("paymentContextLabel").innerHTML = `Amount Due on Invoice (${invoice.invoiceId}):`;
+        document.getElementById("paymentContextValue").innerText = dueOnThisInvoice;
+
+        const paymentInput = document.getElementById("paymentAmountInput");
+        paymentInput.value = "";
+        paymentInput.max = dueOnThisInvoice;
+        paymentInput.placeholder = dueOnThisInvoice;
+
+        document.getElementById("submitPaymentButton").onclick = processSingleInvoicePayment;
+
+        document.getElementById("paymentPopup").style.display = "block";
+        paymentInput.focus();
+    }
+
+    function openCustomerPaymentPopup(customerIdx) {
+      currentPaymentCustomerIndex = customerIdx;
+      currentPaymentInvoiceIndex = -1; // Indicates customer-level payment
+      const customer = customers[customerIdx];
+      let totalDueForCustomerActiveInvoices = 0;
+      customer.invoices.forEach(inv => { if(!inv.isClosed) {totalDueForCustomerActiveInvoices += (parseFloat(inv.total) - (parseFloat(inv.paidAmount) || 0)); }});
+      totalDueForCustomerActiveInvoices = parseFloat(totalDueForCustomerActiveInvoices.toFixed(2));
+
+      document.getElementById("paymentPopupTitle").innerText = "Make Payment (All Invoices)";
+      document.getElementById("paymentCustName").innerText = customer.name;
+      document.getElementById("paymentContextLabel").innerHTML = "Total Outstanding (Active Invoices):";
+      document.getElementById("paymentContextValue").innerText = totalDueForCustomerActiveInvoices.toFixed(2);
+
+      const paymentInput = document.getElementById("paymentAmountInput");
+      paymentInput.value = "";
+      paymentInput.max = totalDueForCustomerActiveInvoices.toFixed(2);
+      paymentInput.placeholder = totalDueForCustomerActiveInvoices.toFixed(2);
+
+      document.getElementById("submitPaymentButton").onclick = processCustomerPayment;
+
+      document.getElementById("paymentPopup").style.display = "block"; paymentInput.focus();
+    }
+
+    function closePaymentPopup() {
+        document.getElementById("paymentPopup").style.display = "none";
+        currentPaymentCustomerIndex = -1;
+        currentPaymentInvoiceIndex = -1;
+    }
+
+    function processSingleInvoicePayment() {
+        if (currentPaymentCustomerIndex === -1 || currentPaymentInvoiceIndex === -1) {
+            alert("Error: Customer or specific Invoice not selected for payment.");
+            return;
+        }
+        const customer = customers[currentPaymentCustomerIndex];
+        const invoice = customer.invoices[currentPaymentInvoiceIndex];
+
+        const paymentAmountInput = document.getElementById("paymentAmountInput");
+        let paymentAmount = parseFloat(paymentAmountInput.value);
+
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            alert("Please enter a valid payment amount > 0.");
+            paymentAmountInput.focus();
+            return;
+        }
+
+        let currentPaid = parseFloat(invoice.paidAmount) || 0;
+        let totalBilled = parseFloat(invoice.total);
+        let dueOnThisInvoice = parseFloat((totalBilled - currentPaid).toFixed(2));
+        const epsilon = 0.001; // For floating point comparisons
+
+        if (paymentAmount > dueOnThisInvoice + epsilon) {
+            alert(`Payment (Rs ${paymentAmount.toFixed(2)}) cannot exceed amount due on this invoice (Rs ${dueOnThisInvoice.toFixed(2)}).`);
+            paymentAmountInput.value = dueOnThisInvoice.toFixed(2);
+            paymentAmountInput.focus();
+            return;
+        }
+
+        // If payment is very close to due amount, treat it as full payment for the due amount
+        if (Math.abs(paymentAmount - dueOnThisInvoice) < epsilon) {
+            paymentAmount = dueOnThisInvoice;
+        }
+
+        invoice.paidAmount = (currentPaid + paymentAmount).toFixed(2);
+        saveDataToLocalStorage();
+
+        alert(`Payment of Rs ${paymentAmount.toFixed(2)} applied to Invoice ${invoice.invoiceId} for ${customer.name}.`);
+        closePaymentPopup();
+        renderDashboard(document.getElementById('searchInput').value);
+    }
+
+    function processCustomerPayment() {
+      if (currentPaymentCustomerIndex === -1) return;
+      const customer = customers[currentPaymentCustomerIndex];
+      const paymentAmountInput = document.getElementById("paymentAmountInput");
+      let paymentToAllocate = parseFloat(paymentAmountInput.value);
+      let totalDueForCustomerActiveInvoices = 0;
+      customer.invoices.forEach(inv => { if(!inv.isClosed) {totalDueForCustomerActiveInvoices += (parseFloat(inv.total) - (parseFloat(inv.paidAmount) || 0));}});
+
+      totalDueForCustomerActiveInvoices = parseFloat(totalDueForCustomerActiveInvoices.toFixed(2));
+
+      if (isNaN(paymentToAllocate) || paymentToAllocate <= 0) { alert("Please enter a valid payment amount > 0."); paymentAmountInput.focus(); return; }
+      const epsilon = 0.001;
+      if (paymentToAllocate > totalDueForCustomerActiveInvoices + epsilon) {
+        alert(`Payment (Rs ${paymentToAllocate.toFixed(2)}) cannot exceed total due on active invoices (Rs ${totalDueForCustomerActiveInvoices.toFixed(2)}). Please adjust the amount.`);
+        paymentAmountInput.value = totalDueForCustomerActiveInvoices.toFixed(2); paymentAmountInput.focus(); return;
+      }
+       // If payment is very close to total due, treat it as full payment for the total due
+       if (Math.abs(paymentToAllocate - totalDueForCustomerActiveInvoices) < epsilon) { paymentToAllocate = totalDueForCustomerActiveInvoices; }
+
+      // Get active invoices sorted by date (oldest first for FIFO payment allocation)
+      const invoicesToPay = customer.invoices
+        .filter(inv => !inv.isClosed && (parseFloat(inv.total) - (parseFloat(inv.paidAmount) || 0)) > epsilon)
+        .sort((a, b) => {
+            const dateA = a.dateObj instanceof Date ? a.dateObj : new Date(a.dateObj || a.date);
+            const dateB = b.dateObj instanceof Date ? b.dateObj : new Date(b.dateObj || b.date);
+            return dateA - dateB; // Oldest first
+        });
+
+      for (let invObj of invoicesToPay) {
+        if (paymentToAllocate <= epsilon) break; // No more payment to allocate
+
+        // Find the actual invoice object in the main customers array to modify it
+        const invoice = customer.invoices.find(i => i.invoiceId === invObj.invoiceId);
+        if(!invoice) continue; // Should not happen
+
+        let currentInvoicePaidAmount = parseFloat(invoice.paidAmount) || 0;
+        let dueOnThisInvoice = parseFloat(invoice.total) - currentInvoicePaidAmount;
+        dueOnThisInvoice = parseFloat(dueOnThisInvoice.toFixed(2)); // ensure 2 decimal places
+
+        if (paymentToAllocate >= dueOnThisInvoice - epsilon) {
+          // Pay off this invoice fully
+          invoice.paidAmount = parseFloat(invoice.total).toFixed(2);
+          paymentToAllocate -= dueOnThisInvoice;
+        } else {
+          // Partially pay this invoice
+          invoice.paidAmount = (currentInvoicePaidAmount + paymentToAllocate).toFixed(2);
+          paymentToAllocate = 0; // All payment allocated
+        }
+        paymentToAllocate = parseFloat(paymentToAllocate.toFixed(2)); // ensure 2 decimal places for remaining allocation
+      }
+      saveDataToLocalStorage();
+      alert(`Payment processed for ${customer.name}.`); closePaymentPopup(); renderDashboard(document.getElementById('searchInput').value);
+    }
+    function openNewInvoiceForExistingCustomerPopup(customerIdx) {
+        currentCustomerForNewInvoice = customerIdx; const customer = customers[customerIdx];
+        document.getElementById("nifec_custName_display").innerText = customer.name;
+        document.getElementById("nifec_custAddress_display").innerText = customer.address || 'N/A';
+        document.getElementById("nifec_custContact_display").innerText = customer.contact || 'N/A';
+        document.getElementById("nifec_invoiceNo").innerText = "INV" + invoiceCounter;
+        document.getElementById("nifec_invoiceDate").innerText = new Date().toLocaleDateString();
+        document.querySelector("#nifec_invoiceTable tbody").innerHTML = "";
+        addNIFEC_ItemRow();
+        document.getElementById("newInvoiceForExistingCustomerPopup").style.display = "block";
+    }
+    function closeNewInvoiceForExistingCustomerPopup() { document.getElementById("newInvoiceForExistingCustomerPopup").style.display = "none"; currentCustomerForNewInvoice = -1; }
+    function addNIFEC_ItemRow() {
+        const tbody = document.querySelector("#nifec_invoiceTable tbody"); const row = tbody.insertRow();
+        row.innerHTML = `<td><input type="text" placeholder="Item Description"></td><td><input type="number" placeholder="1" min="1" value="1" oninput="updateItemAmount_generic(this, updateNIFEC_GrandTotal)"></td><td><input type="number" placeholder="0.00" min="0" step="0.01" value="0" oninput="updateItemAmount_generic(this, updateNIFEC_GrandTotal)"></td><td class="amount">0.00</td><td><button onclick="deleteItemRow_generic(this, updateNIFEC_GrandTotal)" class="close-btn" style="padding:0.2rem 0.5rem;background-color:#e74c3c;">🗑️</button></td>`;
+        updateNIFEC_GrandTotal();
+        row.cells[0].querySelector('input').focus();
+    }
+    function updateNIFEC_GrandTotal() {
+        let total = 0; document.querySelectorAll("#nifec_invoiceTable tbody tr").forEach(row => { total += parseFloat(row.cells[3].innerText) || 0; });
+        document.getElementById("nifec_grandTotal").innerText = total.toFixed(2);
+    }
+    function saveNewInvoiceForExistingCustomer() {
+        if (currentCustomerForNewInvoice === -1) { alert("Error: No customer selected."); return; }
+        const customer = customers[currentCustomerForNewInvoice];
+        const items = Array.from(document.querySelectorAll("#nifec_invoiceTable tbody tr")).map(row => ({
+            desc: row.cells[0].querySelector("input").value.trim(), qty: row.cells[1].querySelector("input").value,
+            rs: row.cells[2].querySelector("input").value, amt: row.cells[3].innerText
+        })).filter(item => item.desc !== "");
+        if (items.length === 0) { alert("Please add at least one item to the invoice."); return; }
+        const currentDate = new Date();
+        const newInvoiceObject = {
+            invoiceId: "INV" + invoiceCounter, date: currentDate.toLocaleDateString(),
+            dateObj: currentDate, items: items, total: document.getElementById("nifec_grandTotal").innerText, paidAmount: 0,
+            isClosed: false
+        };
+        customer.invoices.push(newInvoiceObject);
+        invoiceCounter++;
+        saveDataToLocalStorage();
+        closeNewInvoiceForExistingCustomerPopup(); renderDashboard(document.getElementById('searchInput').value);
+        alert(`New invoice ${newInvoiceObject.invoiceId} added for ${customer.name}.`);
+    }
+
+    function generateInvoicePDF(customerIdx, invoiceIdx) {
+        const customer = customers[customerIdx];
+        const invoice = customer.invoices[invoiceIdx];
+
+        if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+            alert('PDF library (jsPDF) is not loaded correctly.');
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const leftMargin = 10;
+        const rightMargin = pageWidth - 10;
+        const topMargin = 10;
+        const bottomMargin = 10;
+        let currentY = topMargin;
+
+        const lineHeightSmall = 4;
+        const lineHeightMedium = 5;
+        const lineHeightLarge = 7;
+
+        // --- Company Header ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.text("Excellence Graphics", pageWidth / 2, currentY, { align: "center" });
+        currentY += lineHeightLarge;
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(9);
+        doc.text("Contact: (WhatsApp) 0779998608 / (Call) 0711848267", pageWidth / 2, currentY, { align: "center" });
+        currentY += lineHeightSmall;
+        doc.text("Address: Hijragama, Hemmathagama", pageWidth / 2, currentY, { align: "center" });
+        currentY += lineHeightMedium;
+        doc.setLineWidth(0.3);
+        doc.line(leftMargin, currentY, rightMargin, currentY); // Horizontal line
+        currentY += lineHeightLarge;
+
+        // --- Invoice Title ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("INVOICE", leftMargin, currentY);
+        currentY += lineHeightLarge + 2; // Extra space after "INVOICE"
+
+        // --- Customer Details (Bill To) & Invoice Meta (ID, Date) ---
+        const billToStartY = currentY;
+        let leftColumnY = billToStartY;
+        let rightColumnY = billToStartY;
+
+        // Left Column: Bill To
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("BILL TO:", leftMargin, leftColumnY);
+        leftColumnY += lineHeightMedium;
+
+        doc.setFont("helvetica", "normal"); // Customer Name
+        doc.setFontSize(9);
+        doc.text(customer.name, leftMargin, leftColumnY);
+        leftColumnY += lineHeightSmall;
+
+        doc.setFont("times", "normal"); // Customer Address
+        doc.setFontSize(9);
+        const custAddress = customer.address ? customer.address : "N/A";
+        // Max width for address, approx 55% of printable area
+        const addressBlockMaxWidth = (pageWidth - leftMargin * 2) * 0.55;
+        const addrLines = doc.splitTextToSize(custAddress, addressBlockMaxWidth);
+        for (let i = 0; i < addrLines.length; i++) {
+            if (leftColumnY > pageHeight - bottomMargin - 20) { // Prevent overflow before table
+                 doc.addPage(); leftColumnY = topMargin;
+            }
+            doc.text(addrLines[i], leftMargin, leftColumnY);
+            leftColumnY += lineHeightSmall;
+        }
+
+        if (customer.contact) {
+            doc.setFont("times", "normal");
+            doc.setFontSize(9);
+            doc.text(`Contact: ${customer.contact}`, leftMargin, leftColumnY);
+            leftColumnY += lineHeightSmall;
+        }
+
+        // Right Column: Invoice Details
+        const invoiceDetailsLabelX = rightMargin - 55; // X position for "Invoice ID:", "Date:" labels
+        const invoiceDetailsValueX = rightMargin;     // X position for actual ID and Date values
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+
+        doc.text("Invoice ID:", invoiceDetailsLabelX, rightColumnY, { align: "left" });
+        doc.setFont("helvetica", "bold");
+        doc.text(invoice.invoiceId, invoiceDetailsValueX, rightColumnY, { align: "right" });
+        rightColumnY += lineHeightMedium;
+
+        doc.setFont("helvetica", "normal");
+        doc.text("Date:", invoiceDetailsLabelX, rightColumnY, { align: "left" });
+        doc.setFont("helvetica", "bold");
+        doc.text(invoice.date, invoiceDetailsValueX, rightColumnY, { align: "right" });
+        rightColumnY += lineHeightMedium;
+
+        // Synchronize Y position before table
+        currentY = Math.max(leftColumnY, rightColumnY) + lineHeightLarge;
+
+
+        // --- Items Table ---
+        const tableColumn = ["Description", "Qty", "Price (Rs)", "Amount (Rs)"];
+        const tableRows = [];
+        invoice.items.forEach(item => {
+            tableRows.push([
+                item.desc,
+                item.qty,
+                parseFloat(item.rs).toFixed(2),
+                parseFloat(item.amt).toFixed(2)
+            ]);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: currentY,
+            theme: 'grid', // 'striped', 'grid', 'plain'
+            styles: {
+                font: 'helvetica', // Base font for table
+                fontSize: 8,
+                cellPadding: 1.5,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [0, 90, 157], // Darker blue for header
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: 'auto', font: 'times', fontStyle: 'normal' }, // Description - Times Roman
+                1: { cellWidth: 12, halign: 'right' }, // Qty
+                2: { cellWidth: 20, halign: 'right' }, // Price
+                3: { cellWidth: 22, halign: 'right', fontStyle: 'bold' }  // Amount - Bold
+            },
+            margin: { left: leftMargin, right: leftMargin },
+            didDrawPage: function(data) {
+                // This is called after a page is drawn by autoTable (including the first one)
+                // Update currentY for content after the table, respecting potential page breaks by autoTable
+                // However, autoTable's finalY is more reliable for the Y position after the table.
+            }
+        });
+        currentY = doc.lastAutoTable.finalY; // Y position after table
+        currentY += lineHeightMedium; // Space after table
+
+        // --- Totals Section ---
+        const totalsLabelX = rightMargin - 45; // X for labels like "Grand Total:"
+        const totalsAmountX = rightMargin;     // X for amounts, right-aligned
+
+        // Line above totals
+        doc.setLineWidth(0.2);
+        doc.line(totalsLabelX - 5, currentY, rightMargin, currentY);
+        currentY += lineHeightSmall;
+
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text("Grand Total:", totalsLabelX, currentY, { align: "left" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10); // Slightly larger for Grand Total amount
+        doc.text(`Rs ${parseFloat(invoice.total).toFixed(2)}`, totalsAmountX, currentY, { align: "right" });
+        currentY += lineHeightMedium;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text("Amount Paid:", totalsLabelX, currentY, { align: "left" });
+        doc.setFont("helvetica", "normal"); // Amount paid normal weight
+        doc.setFontSize(9);
+        doc.text(`Rs ${parseFloat(invoice.paidAmount || 0).toFixed(2)}`, totalsAmountX, currentY, { align: "right" });
+        currentY += lineHeightMedium;
+
+        // Line for Amount Due
+        doc.setLineWidth(0.1);
+        doc.line(totalsLabelX - 5, currentY - (lineHeightSmall/2), rightMargin, currentY - (lineHeightSmall/2));
+
+
+        const dueForThisInvoice = parseFloat(invoice.total) - parseFloat(invoice.paidAmount || 0);
+        doc.setFont("helvetica", "bold"); // Due amount label bold
+        doc.setFontSize(9);
+        doc.text("Amount Due:", totalsLabelX, currentY, { align: "left" });
+        doc.setFontSize(10); // Due amount value bold and slightly larger
+        doc.text(`Rs ${dueForThisInvoice.toFixed(2)}`, totalsAmountX, currentY, { align: "right" });
+        currentY += lineHeightLarge;
+
+        if (invoice.isClosed) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 100, 100); // Grey color for closed status
+            doc.text("STATUS: CLOSED", rightMargin, currentY, { align: "right" });
+            doc.setTextColor(0, 0, 0); // Reset text color
+            currentY += lineHeightMedium;
+        }
+
+        // --- Bank Account Details ---
+        const bankDetailsStartY = currentY + lineHeightMedium; // Tentative start for bank details
+        const bankDetailsContentHeight = 25; // Approximate height for bank details section
+
+        // Check if bank details will fit, otherwise add new page
+        if (bankDetailsStartY + bankDetailsContentHeight > pageHeight - bottomMargin - 5) { // 5mm buffer from footer
+            doc.addPage();
+            currentY = topMargin; // Reset Y for new page
+        } else {
+            currentY = bankDetailsStartY;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text("Bank Account Details:", leftMargin, currentY);
+        currentY += lineHeightMedium;
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(8);
+        const bankIndent = leftMargin + 4;
+        doc.text("Bank     : BOC", bankIndent, currentY); currentY += lineHeightSmall;
+        doc.text("Name    : Mr. O. M. B. Hafi", bankIndent, currentY); currentY += lineHeightSmall;
+        doc.text("A/C No  : 85693192", bankIndent, currentY); currentY += lineHeightSmall;
+        doc.text("Branch : Mawanella", bankIndent, currentY);
+
+        // --- Footer ---
+        const footerY = pageHeight - bottomMargin + 3; // Position slightly lower if space
+        doc.setFont("times", "italic");
+        doc.setFontSize(9);
+        doc.text("Thank you for your business!", pageWidth / 2, footerY, { align: "center" });
+
+        doc.save(`Invoice-A5-${invoice.invoiceId}-${customer.name.replace(/\s+/g, '_')}.pdf`);
+    }
+
+
+    function openFileUpload() {
+        document.getElementById('excelFileUpload').click();
+    }
+
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            // header:1 creates an array of arrays, easier to access by index
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {header:1});
+
+            if (jsonData.length < 2) { // Needs at least one header row and one data row
+                alert("Excel file seems empty or has no data rows.");
+                return;
+            }
+
+            // Assuming headers are: Customer Name (Column A), Contact (Column B)
+            // Data starts from the second row (index 1)
+            let customersAdded = 0;
+            let customersSkipped = 0;
+            let customersErrored = 0;
+            let errorMessages = [];
+
+            for (let i = 1; i < jsonData.length; i++) { // Start from 1 to skip header row
+                const row = jsonData[i];
+                const custName = row[0] ? String(row[0]).trim() : "";
+                const custContact = row[1] ? String(row[1]).trim() : "";
+                // Address is not included in this simple bulk upload example for profiles
+
+                if (!custName) {
+                    customersErrored++;
+                    errorMessages.push(`Skipped row ${i+1}: Customer Name is missing.`);
+                    continue;
+                }
+
+                if (findCustomerIndexByName(custName) !== -1) {
+                    customersSkipped++;
+                    errorMessages.push(`Skipped row ${i+1}: Customer "${custName}" already exists.`);
+                    continue;
+                }
+
+                customers.push({
+                    name: custName,
+                    address: "", // Default empty address
+                    contact: custContact,
+                    invoices: []
+                });
+                customersAdded++;
+            }
+
+            if (customersAdded > 0) {
+                saveDataToLocalStorage();
+                renderDashboard();
+            }
+
+            let summaryMessage = `Bulk Upload Complete.\n`;
+            summaryMessage += `Customers Added: ${customersAdded}\n`;
+            summaryMessage += `Customers Skipped (Already Exist): ${customersSkipped}\n`;
+            summaryMessage += `Rows with Errors: ${customersErrored}`;
+            if(errorMessages.length > 0){
+                summaryMessage += "\n\nDetails:\n" + errorMessages.slice(0,10).join("\n"); // Show first 10 errors
+                if(errorMessages.length > 10) summaryMessage += "\n...and more.";
+            }
+            alert(summaryMessage);
+        };
+        reader.onerror = function(ex) {
+            console.error(ex);
+            alert("Error reading file.");
+        };
+        reader.readAsArrayBuffer(file);
+        // Reset file input to allow uploading the same file again if needed
+        event.target.value = null;
+    }
+
+
+    window.onload = () => {
+        loadDataFromLocalStorage();
+        renderDashboard();
+        document.getElementById('searchInput').focus();
+    };
+  </script>
+</body>
+</html>
